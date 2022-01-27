@@ -1,0 +1,560 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+[[ "${BASH_VERSINFO[0]}" -lt 4 ]] && echo "Bash >= 4 required" && exit 1
+
+function show_usage() {
+    cat >&2 << EOF
+Usage: ${SCRIPT_NAME} [OPTION...] [GOAL_NAME]
+
+Options:
+  -l, --list          List the available goals in the file
+  -f, --file          Use a different file than the default (./Tudasfile)
+  -c, --compile-only  Don't run - just print the compiled script
+  -v, --verbose       Display verbose messages
+  --version           Display current version number and exit
+  -h, --help          Show this help message then exit
+EOF
+}
+
+readonly DEPENDENCIES=()
+# SCRIPT_DIR=$(dirname "$(readlink -f "${0}")"); readonly SCRIPT_DIR
+SCRIPT_NAME=$(basename "${0}"); readonly SCRIPT_NAME
+readonly LOG_DEBUG="true"
+readonly TUDAS_VERSION="0.0.1"
+
+# Colors: https://stackoverflow.com/a/33206814
+readonly COLOR_OFF="\033[0m"
+readonly COLOR_GRAY="\033[37;2m"
+readonly COLOR_YELLOW="\033[1;33m"
+readonly COLOR_DKRED="\033[31;1m"
+readonly COLOR_ITALIC_RED="\033[31;1;3m"
+readonly COLOR_MAGENTA="\033[35m"
+readonly COLOR_PANIC="${COLOR_ITALIC_RED}"
+readonly COLOR_ERROR="${COLOR_DKRED}"
+readonly COLOR_WARNING="${COLOR_YELLOW}"
+readonly COLOR_INFO="${COLOR_OFF}"
+readonly COLOR_VERBOSE="${COLOR_GRAY}"
+readonly COLOR_DEBUG="${COLOR_MAGENTA}"
+
+function should_ignore_color() {
+
+    # Inspired by:
+    # https://github.com/kvz/bash3boilerplate/blob/9f06b1a8c668592e73f6f9a884776ed1e4a7e0fa/main.sh#L87
+
+    if [[ "${NO_COLOR:-}" = "true" ]]; then
+        return 0
+    elif [[ "${TERM:-}" != "xterm"* ]] && [[ "${TERM:-}" != "screen"* ]]; then
+        return 0
+    elif [[ ! -t 1 ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function color_text() {
+
+    local color="${1}"
+    local color_reset="${COLOR_OFF}"
+
+    if should_ignore_color; then
+        color=""
+        color_reset=""
+    fi
+
+    shift 1
+    local message="${*}"
+    echo -e -n "${color}"
+    echo -n "${message}"
+    echo -e -n "${color_reset}"
+}
+
+function panic() {
+    # Prints a message like this:
+    #
+    # Fatal: Error message goes here!
+    #    Line 1234, my_script.sh
+    #
+    >&2 color_text "${COLOR_PANIC}" "Fatal: ${*}"
+    >&2 echo
+    >&2 color_text "${COLOR_PANIC}" "   Line $(caller)"
+    >&2 echo
+
+    # Do a "clean" exit with an error code
+    exit 1
+}
+
+function log_error() {
+    >&2 color_text "${COLOR_ERROR}" "ERROR: ${*}"
+    >&2 echo
+}
+
+function log_warning() {
+    color_text "${COLOR_WARNING}" "WARNING: ${*}"
+    echo
+}
+
+function log_info() {
+    color_text "${COLOR_INFO}" "${*}"
+    echo
+}
+
+function log_verbose() {
+    if [ "${ARG_VERBOSE:-}" = "true" ]; then
+        color_text "${COLOR_VERBOSE}" "verbose: ${*}"
+        echo
+    fi
+}
+
+function log_debug() {
+    if [ "${LOG_DEBUG}" = "true" ]; then
+        color_text "${COLOR_DEBUG}" "DEBUG: ${*}"
+        echo
+    fi
+}
+
+function cmd_is_installed() {
+    command -v "${1}" >/dev/null 2>&1
+}
+
+ARG_FILE=""
+ARG_GOAL=""
+
+function parse_commandline() {
+
+    while [ "${#}" -gt "0" ]; do
+        local consume=1
+
+        case "${1}" in
+            -l|--list)
+                ARG_LIST="true"
+            ;;
+            -f|--file)
+                if [ "${ARG_FILE}" != "" ]; then
+                    log_error "Should only specify the --file argument once."
+                    show_usage
+                    exit 1
+                fi
+                if [ "${#}" -le 1 ]; then
+                    log_error "No file specified."
+                    show_usage
+                    exit 1
+                fi
+                ARG_FILE="${2}"
+                consume=2
+            ;;
+            -c|--compile-only)
+                ARG_COMPILE_ONLY="true"
+            ;;
+            -v|--verbose)
+                ARG_VERBOSE="true"
+            ;;
+            --version)
+                ARG_VERSION="true"
+            ;;
+            -h|-\?|--help)
+                ARG_HELP="true"
+            ;;
+            *)
+                if [ "${ARG_GOAL}" = "" ]; then
+                    ARG_GOAL="${1}"
+                else
+                    log_error "Unrecognized argument: ${1}"
+                    show_usage
+                    exit 1
+                fi
+            ;;
+        esac
+
+        shift ${consume}
+    done
+
+    if [ "${ARG_FILE}" = "" ]; then
+        ARG_FILE="Tudasfile"
+    fi
+
+    if [ "${ARG_GOAL:-}" = "" ]; then
+        ARG_GOAL="default"
+    fi
+}
+
+parse_commandline "${@}"
+
+if [ "${ARG_HELP:-}" = "true" ]; then
+    show_usage
+    exit 0
+fi
+
+if [ "${ARG_VERSION:-}" = "true" ]; then
+    log_info "Tudas version ${TUDAS_VERSION}"
+    exit 0
+fi
+
+function cleanup_before_exit() {
+    log_verbose "Cleaning up before exit..."
+    # Add cleanup logic that runs every time your script exits
+    log_verbose "Finished cleaning up"
+}
+
+trap cleanup_before_exit EXIT
+
+function unexpected_error() {
+
+    local line_num="${1}"
+    local script_path="${2}"
+    local faulting_command="${3}"
+
+    local msg; msg=$(cat <<EOF
+Unexpected error at line ${line_num} ${script_path}:
+    Command: "${faulting_command}"
+EOF
+)
+    color_text "${COLOR_PANIC}" "${msg}"
+
+}
+
+trap 'unexpected_error ${LINENO} ${BASH_SOURCE[0]} ${BASH_COMMAND}' ERR   # Single-quotes are important, see https://unix.stackexchange.com/a/39660
+
+for dep in "${DEPENDENCIES[@]}"; do
+    cmd_is_installed "${dep}" || panic "Missing dependency \"${dep}\""
+done
+
+_current_line=""
+_current_line_fields=()
+_current_line_num=0
+_current_goal=""
+_goals=()
+declare -A _goal_bodies
+declare -A _goal_dependencies
+declare -A _goal_reaches
+_shell="bash"
+_prelude_body=""
+
+function new_goal() {
+    test "${#}" -eq 1 || panic "Expecting 1 argument: goal name"
+    local goal_name="${1}"
+    _current_goal="${goal_name}"
+    _goals+=("${goal_name}")
+    _goal_bodies["${goal_name}"]="        true"
+    _goal_dependencies["${goal_name}"]=""
+    _goal_reaches["${goal_name}"]=""
+}
+
+function process_goal() {
+    if [ ${#} -lt 2 ]; then
+        log_error "Line ${_current_line_num}: No goal name specified."
+        exit 1
+    fi
+
+    shift 1
+
+    local goal_name="${1}"
+    if ! [[ "${goal_name}" =~ ^[a-zA-Z_0-9\-]+$ ]]; then
+        log_error "Invalid goal name: \"${goal_name}\". Valid characters are A-Z, a-z, 0-9, -, _"
+        exit 1
+    fi
+
+    # TODO: Make sure goal names don't start with `-` (avoid conflict with command line params)
+
+    new_goal "${goal_name}"
+}
+
+function process_depends_on() {
+    if [ "${_current_goal}" = "" ]; then
+        log_error "Line ${_current_line_num}: @depends_on not associated with any goal."
+        exit 1
+    fi
+
+    if [ ${#} -lt 2 ]; then
+        log_error "Line ${_current_line_num}: Empty @depends_on."
+        exit 1
+    fi
+
+    shift 1
+
+    local existing_deps="${_goal_dependencies[${_current_goal}]}"
+    _goal_dependencies["${_current_goal}"]="${existing_deps} ${*}"
+}
+
+function process_reached_if() {
+    if [ "${_current_goal}" = "" ]; then
+        log_error "Line ${_current_line_num}: @reached_if not associated with any goal."
+        exit 1
+    fi
+
+    if [ ${#} -lt 2 ]; then
+        log_error "Line ${_current_line_num}: Empty @reached_if."
+        exit 1
+    fi
+
+    shift 1
+
+    if [ "${_goal_reaches[${_current_goal}]:-}" != "" ]; then
+        log_error "Line ${_current_line_num}: @reached_if has already been defined for goal \"${_current_goal}\"."
+        exit 1
+    fi
+
+    local reach_script="${*}"
+    _goal_reaches["${_current_goal}"]="        ${reach_script}"
+}
+
+function process_shell() {
+    _shell="${2}"
+    # TODO: Make sure we're in prelude
+    # TODO: Error if specified more than once
+    # TODO: Make sure shell not empty
+}
+
+function process_lib() {
+    # Switch into "lib" mode
+    _current_goal=""
+    # TODO: Make sure there's nothing after @lib
+}
+
+function process_code() {
+    if [ "${_current_goal}" = "" ]; then
+        _prelude_body="${_prelude_body}
+${_current_line}"
+    else
+        # Replace escaped keywords, i.e. \@goal -> @goal
+        local line
+        line="$(echo "${_current_line}" \
+            | sed "s:\\\@goal:@goal:g" \
+            | sed "s:\\\@reached_if:@reached_if:g" \
+            | sed "s:\\\@depends_on:@depends_on:g" \
+            | sed "s:\\\@lib:@lib:g")"
+        local current_body="${_goal_bodies["${_current_goal}"]}"
+        _goal_bodies["${_current_goal}"]="${current_body}
+${line}"
+    fi
+}
+
+function process_line() {
+    test "${#}" -eq 1 || panic "Expecting 1 argument: line contents"
+    _current_line="${1}"
+
+    # Split the line into an array by whitespace.
+    local old_ifs="${IFS}"
+    unset IFS
+    read -ra _current_line_fields -d '' <<< "${_current_line}" || true # Exit code for `read` is usually 1
+    IFS="${old_ifs}"
+
+    if [ ${#_current_line_fields[@]} -gt 0 ]; then
+        case "${_current_line_fields[0]}" in
+            @goal)
+                process_goal "${_current_line_fields[@]}"
+            ;;
+            @depends_on)
+                process_depends_on "${_current_line_fields[@]}"
+            ;;
+            @reached_if)
+                process_reached_if "${_current_line_fields[@]}"
+            ;;
+            @shell)
+                process_shell "${_current_line_fields[@]}"
+            ;;
+            @lib)
+                process_lib "${_current_line_fields[@]}"
+            ;;
+            *)
+                process_code
+            ;;
+        esac
+    else
+        process_code
+    fi
+}
+
+function process_file() {
+    test "${#}" -eq 1 || panic "Expecting 1 argument: file path"
+    local file_path="${1}"
+    while IFS= read -r line
+    do
+        _current_line_num=$((_current_line_num + 1))
+        process_line "${line}"
+    done < "${file_path}"
+}
+
+function compile_script() {
+
+    cat << EOF
+#!/usr/bin/env ${_shell}
+# shellcheck disable=2034
+BASH_ARGV0="${ARG_FILE}"
+${_prelude_body}
+EOF
+
+    for goal_name in "${_goals[@]}"
+    do
+        compile_goal "${goal_name}"
+    done
+
+    if [ "${#_goals[@]}" -gt 0 ]; then
+        echo "\"__goal_${ARG_GOAL}\""
+    fi
+
+}
+
+__get_dependencies_result=()
+function get_dependencies() {
+    local goal_name="${1}"
+
+    local dep_str="${_goal_dependencies[${goal_name}]}"
+    IFS=" " read -r -a dep_split <<< "$(echo "${dep_str}" | tr --squeeze-repeats "[:space:]")"
+
+    __get_dependencies_result=()
+    for dep in "${dep_split[@]}";
+    do
+        if [ "${dep}" != "" ]; then
+            __get_dependencies_result+=("${dep}")
+        fi
+    done
+}
+
+function compile_goal() {
+    local goal_name="${1}"
+    local goal_body="${_goal_bodies[${goal_name}]}"
+
+    local dep_str="${_goal_dependencies[${goal_name}]}"
+    IFS=" " read -r -a dep_split <<< "$(echo "${dep_str}" | tr --squeeze-repeats "[:space:]")"
+
+    local dependencies=""
+    get_dependencies "${goal_name}"
+    for dep in "${__get_dependencies_result[@]}";
+    do
+        dependencies=$(cat << EOF
+${dependencies}
+        "__goal_${dep}"
+EOF
+)
+    done
+
+    if [ "${dependencies}" = "" ]; then
+        dependencies="        true"
+    fi
+
+    local reach_body="${_goal_reaches[${goal_name}]}"
+    if [ "${reach_body}" = "" ]; then
+        reach_body="        false"
+    fi
+
+    cat << EOF
+__${goal_name}_has_run=0
+__goal_${goal_name}() {
+    if [ \${__${goal_name}_has_run} -ne 0 ]; then
+        return 0
+    fi
+    __${goal_name}_has_run=1
+    __${goal_name}_reached() {
+${reach_body}
+    }
+    __${goal_name}_deps() {
+${dependencies}
+    }
+    __${goal_name}_body() {
+${goal_body}
+    }
+    if (__${goal_name}_reached); then
+        echo "goal \"${goal_name}\": [already satisfied]"
+        return 0
+    fi
+    __${goal_name}_deps || return \${?}
+    echo "goal \"${goal_name}\"..."
+    if (__${goal_name}_body); then
+        echo "goal \"${goal_name}\": [success]"
+        return 0
+    else
+        result=\${?}
+        echo "goal \"${goal_name}\": [FAIL] (exit code \${result})"
+        exit \${result}
+    fi
+}
+EOF
+
+}
+
+function goal_exists() {
+    local goal_name="${1}"
+    for g in "${_goals[@]}"
+    do
+        if [ "${g}" = "${goal_name}" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+function check_errors() {
+
+    if [ "${#_goals[@]}" -lt 1 ]; then
+        log_error "No goals defined in \"${ARG_FILE}\""
+        exit 1
+    fi
+
+    if ! goal_exists "${ARG_GOAL}"; then
+        if [ "${ARG_GOAL}" = "default" ]; then
+            log_error "No default goal exists. You must explicitly specify a goal name."
+        else
+            log_error "No goal named \"${ARG_GOAL}\""
+        fi
+        exit 1
+    fi
+
+    for g in "${_goals[@]}"
+    do
+        get_dependencies "${g}"
+        for dep in "${__get_dependencies_result[@]}"
+        do
+            if ! goal_exists "${dep}"; then
+                log_error "@depends_on: No goal exists named \"${dep}\""
+                exit 1
+            fi
+        done
+    done
+}
+
+function list_goals() {
+
+    log_info "Available goals:"
+    log_info ""
+
+    for g in "${_goals[@]}"
+    do
+        if ! [[ "${g}" =~ ^_ ]]; then
+            # This goal does not start with an underscore, so it's public and
+            # therefore listable
+            log_info "  ${g}"
+        fi
+    done
+
+}
+
+function main() {
+    process_file "${ARG_FILE}"
+    check_errors
+
+    if [ "${ARG_LIST:-}" = "true" ]; then
+        list_goals
+        exit 0
+    fi
+
+    if [ "${ARG_COMPILE_ONLY:-}" = "true" ]; then
+        compile_script
+    else
+        local working_dir; working_dir="$(dirname "$(readlink -f "${ARG_FILE}")")"
+        pushd "${working_dir}" > /dev/null
+
+        if compile_script | /usr/bin/env "${_shell}"; then
+            popd > /dev/null
+            exit 0
+        else
+            result=${?}
+            popd > /dev/null
+            exit ${result}
+        fi
+    fi
+}
+
+main
