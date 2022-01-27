@@ -4,3 +4,8 @@ set -Eeuo pipefail
 @goal default
     cd hello
     go run .
+
+@goal build
+    mkdir --parent out
+    cd hello
+    go build -o ../out

@@ -7,7 +7,7 @@ import (
 )
 
 func Hello(name string) (string, error) {
-	err := validate_name(name)
+	err := validateName(name)
 	if err != nil {
 		return "", err
 	}
@@ -16,7 +16,7 @@ func Hello(name string) (string, error) {
 }
 
 func Goodbye(name string) (string, error) {
-	err := validate_name(name)
+	err := validateName(name)
 	if err != nil {
 		return "", err
 	}
@@ -24,7 +24,7 @@ func Goodbye(name string) (string, error) {
 	return fmt.Sprintf("Goodbye %v!", name), nil
 }
 
-func validate_name(name string) error {
+func validateName(name string) error {
 	if name == "" {
 		return errors.New("empty name")
 	}
