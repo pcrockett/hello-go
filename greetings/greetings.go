@@ -1,11 +1,37 @@
 package greetings
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
 
-func Hello(name string) string {
-	return fmt.Sprintf("Hello %v!", name)
+func Hello(name string) (string, error) {
+	err := validate_name(name)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Hello %v!", name), nil
 }
 
-func Goodbye(name string) string {
-	return fmt.Sprintf("Goodbye %v!", name)
+func Goodbye(name string) (string, error) {
+	err := validate_name(name)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Goodbye %v!", name), nil
+}
+
+func validate_name(name string) error {
+	if name == "" {
+		return errors.New("empty name")
+	}
+
+	if strings.ToLower(name) == "world" {
+		return errors.New("come on, that's boring")
+	}
+
+	return nil
 }
