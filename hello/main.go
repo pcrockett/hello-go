@@ -16,7 +16,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	log.Println(conversation.Hello)
-	log.Println(conversation.Goodbye)
+	log.Println(conversation.SayHello())
+	log.Println(conversation.SayGoodbye())
 
 }

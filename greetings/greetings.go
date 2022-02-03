@@ -7,8 +7,16 @@ import (
 )
 
 type Conversation struct {
-	Hello   string
-	Goodbye string
+	hello   string
+	goodbye string
+}
+
+func (c Conversation) SayHello() string {
+	return c.hello
+}
+
+func (c Conversation) SayGoodbye() string {
+	return c.goodbye
 }
 
 func Rude(name string) (Conversation, error) {
@@ -18,8 +26,8 @@ func Rude(name string) (Conversation, error) {
 	}
 
 	return Conversation{
-		Hello:   fmt.Sprintf("What do you want %v?", name),
-		Goodbye: fmt.Sprintf("Go away %v!", name),
+		hello:   fmt.Sprintf("What do you want %v?", name),
+		goodbye: fmt.Sprintf("Go away %v!", name),
 	}, nil
 }
 
@@ -30,8 +38,8 @@ func Polite(name string) (Conversation, error) {
 	}
 
 	return Conversation{
-		Hello:   fmt.Sprintf("Greetings, dear %v!", name),
-		Goodbye: fmt.Sprintf("I bid you farewell, %v!", name),
+		hello:   fmt.Sprintf("Good morrow, dear %v!", name),
+		goodbye: fmt.Sprintf("I bid thee farewell, dear %v!", name),
 	}, nil
 }
 

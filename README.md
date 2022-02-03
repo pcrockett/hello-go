@@ -10,7 +10,7 @@ Install Go. Then run `./tudas`.
 
 * [x] Use `log` package from https://go.dev/doc/tutorial/handle-errors
 * [x] Refactor greetings package to return a greeting struct with both hello and goodbye
-* [ ] Public / private methods
+* [x] Public / private methods
 * [ ] Use interfaces for polymorphism
 * [ ] Define custom greeting
 * [ ] Parse command line parameters
