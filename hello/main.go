@@ -11,17 +11,12 @@ func main() {
 
 	name := "phil"
 
-	greeting, err := greetings.Hello(name)
+	conversation, err := greetings.Polite(name)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	log.Println(greeting)
+	log.Println(conversation.Hello)
+	log.Println(conversation.Goodbye)
 
-	greeting, err = greetings.Goodbye(name)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	log.Println(greeting)
 }

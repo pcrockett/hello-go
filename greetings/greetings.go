@@ -6,22 +6,33 @@ import (
 	"strings"
 )
 
-func Hello(name string) (string, error) {
-	err := validateName(name)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("Hello %v!", name), nil
+type Conversation struct {
+	Hello   string
+	Goodbye string
 }
 
-func Goodbye(name string) (string, error) {
+func Rude(name string) (Conversation, error) {
 	err := validateName(name)
 	if err != nil {
-		return "", err
+		return Conversation{}, err
 	}
 
-	return fmt.Sprintf("Goodbye %v!", name), nil
+	return Conversation{
+		Hello:   fmt.Sprintf("What do you want %v?", name),
+		Goodbye: fmt.Sprintf("Go away %v!", name),
+	}, nil
+}
+
+func Polite(name string) (Conversation, error) {
+	err := validateName(name)
+	if err != nil {
+		return Conversation{}, err
+	}
+
+	return Conversation{
+		Hello:   fmt.Sprintf("Greetings, dear %v!", name),
+		Goodbye: fmt.Sprintf("I bid you farewell, %v!", name),
+	}, nil
 }
 
 func validateName(name string) error {
