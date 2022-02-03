@@ -1,25 +1,27 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"philcrockett.com/greetings"
 )
 
 func main() {
-	name := "world"
+	log.SetFlags(0) // Disable date / time / etc. from log output
+
+	name := "phil"
 
 	greeting, err := greetings.Hello(name)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
-	fmt.Println(greeting)
+	log.Println(greeting)
 
 	greeting, err = greetings.Goodbye(name)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
-	fmt.Println(greeting)
+	log.Println(greeting)
 }
