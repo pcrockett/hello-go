@@ -14,3 +14,10 @@ Install Go. Then run `./tudas`.
 * [ ] Use interfaces for polymorphism
 * [ ] Define custom greeting
 * [ ] Parse command line parameters
+
+## Misc Notes
+
+Surprised at how Go uses pointers similar to C / C++, and expects the programmer to know the difference between passing a value and passing a pointer to a method.
+
+For example, a method that has a value receiver cannot modify the original object, because all it has is a _copy_ of the original object. If you need to modify the original object, you need to have a pointer receiver.
+

@@ -1,7 +1,6 @@
 package greetings
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -9,6 +8,11 @@ import (
 type Conversation struct {
 	hello   string
 	goodbye string
+}
+
+type IConversation interface {
+	SayHello() string
+	SayGoodbye() string
 }
 
 func (c Conversation) SayHello() string {
@@ -19,7 +23,19 @@ func (c Conversation) SayGoodbye() string {
 	return c.goodbye
 }
 
-func Rude(name string) (Conversation, error) {
+type ErrBoring struct{}
+
+func (e ErrBoring) Error() string {
+	return "come on, that's boring"
+}
+
+type ErrEmptyName struct{}
+
+func (e ErrEmptyName) Error() string {
+	return "empty name"
+}
+
+func Rude(name string) (IConversation, error) {
 	err := validateName(name)
 	if err != nil {
 		return Conversation{}, err
@@ -31,7 +47,7 @@ func Rude(name string) (Conversation, error) {
 	}, nil
 }
 
-func Polite(name string) (Conversation, error) {
+func Polite(name string) (IConversation, error) {
 	err := validateName(name)
 	if err != nil {
 		return Conversation{}, err
@@ -45,11 +61,11 @@ func Polite(name string) (Conversation, error) {
 
 func validateName(name string) error {
 	if name == "" {
-		return errors.New("empty name")
+		return ErrEmptyName{}
 	}
 
 	if strings.ToLower(name) == "world" {
-		return errors.New("come on, that's boring")
+		return ErrBoring{}
 	}
 
 	return nil
