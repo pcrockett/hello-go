@@ -12,7 +12,7 @@ Install Go. Then run `./tudas`.
 * [x] Refactor greetings package to return a greeting struct with both hello and goodbye
 * [x] Public / private methods
 * [x] Use interfaces for polymorphism
-* [ ] Define custom greeting
+* [x] Define custom greeting
 * [ ] Parse command line parameters
 
 ## Misc Notes
