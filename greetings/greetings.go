@@ -5,22 +5,49 @@ import (
 	"strings"
 )
 
-type Conversation struct {
-	hello   string
-	goodbye string
-}
-
 type IConversation interface {
 	SayHello() string
 	SayGoodbye() string
 }
 
-func (c Conversation) SayHello() string {
-	return c.hello
+type PoliteConversation struct {
+	name string
 }
 
-func (c Conversation) SayGoodbye() string {
-	return c.goodbye
+func NewPoliteConversation(name string) (*PoliteConversation, error) {
+	err := validateName(name)
+	if err != nil {
+		return nil, err
+	}
+	return &PoliteConversation{name}, nil
+}
+
+func (c PoliteConversation) SayHello() string {
+	return fmt.Sprintf("Good morrow, fair %v!", c.name)
+}
+
+func (c PoliteConversation) SayGoodbye() string {
+	return fmt.Sprintf("Cheerio, taa-taa %v, my good lad!", c.name)
+}
+
+type RudeConversation struct {
+	name string
+}
+
+func NewRudeConversation(name string) (*RudeConversation, error) {
+	err := validateName(name)
+	if err != nil {
+		return nil, err
+	}
+	return &RudeConversation{name}, nil
+}
+
+func (c RudeConversation) SayHello() string {
+	return fmt.Sprintf("What do you want %v?", c.name)
+}
+
+func (c RudeConversation) SayGoodbye() string {
+	return fmt.Sprintf("Go away %v!", c.name)
 }
 
 type ErrBoring struct{}
@@ -33,30 +60,6 @@ type ErrEmptyName struct{}
 
 func (e ErrEmptyName) Error() string {
 	return "empty name"
-}
-
-func Rude(name string) (IConversation, error) {
-	err := validateName(name)
-	if err != nil {
-		return Conversation{}, err
-	}
-
-	return Conversation{
-		hello:   fmt.Sprintf("What do you want %v?", name),
-		goodbye: fmt.Sprintf("Go away %v!", name),
-	}, nil
-}
-
-func Polite(name string) (IConversation, error) {
-	err := validateName(name)
-	if err != nil {
-		return Conversation{}, err
-	}
-
-	return Conversation{
-		hello:   fmt.Sprintf("Good morrow, fair %v!", name),
-		goodbye: fmt.Sprintf("Cheerio, taa-taa %v, my good lad!", name),
-	}, nil
 }
 
 func validateName(name string) error {
