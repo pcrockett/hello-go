@@ -54,8 +54,8 @@ func Polite(name string) (IConversation, error) {
 	}
 
 	return Conversation{
-		hello:   fmt.Sprintf("Good morrow, dear %v!", name),
-		goodbye: fmt.Sprintf("I bid thee farewell, dear %v!", name),
+		hello:   fmt.Sprintf("Good morrow, fair %v!", name),
+		goodbye: fmt.Sprintf("Cheerio, taa-taa %v, my good lad!", name),
 	}, nil
 }
 
