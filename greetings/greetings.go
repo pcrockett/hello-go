@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-type IConversation interface {
+type Conversation interface {
 	SayHello() string
 	SayGoodbye() string
 }

@@ -39,8 +39,8 @@ func (e ErrUnrecognizedConversationType) Error() string {
 	return fmt.Sprintf("unrecognized conversation type: \"%v\"", e.conversationType)
 }
 
-func createConversation(conversationType string, name string) (greetings.IConversation, error) {
-	var conversation greetings.IConversation
+func createConversation(conversationType string, name string) (greetings.Conversation, error) {
+	var conversation greetings.Conversation
 	var err error
 
 	if conversationType == "polite" {
