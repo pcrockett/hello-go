@@ -4,15 +4,42 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/alecthomas/kong"
 	"philcrockett.com/greetings"
 )
+
+var cliParams struct {
+	Name             string `help:"Name of person to whom you want to say hello / goodbye" arg:""`
+	ConversationType string `help:"Type of conversation you want to have (polite, rude, pirate)" enum:"polite,rude,pirate" default:"polite" short:"t"`
+}
 
 func main() {
 	log.SetFlags(0) // Disable date / time / etc. from log output
 
-	name := "phil"
-	conversationType := "pirate"
+	kong.Parse(&cliParams)
 
+	conversation, err := createConversation(
+		cliParams.ConversationType, cliParams.Name,
+	)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	log.Println(conversation.SayHello())
+	log.Println(conversation.SayGoodbye())
+
+}
+
+type ErrUnrecognizedConversationType struct {
+	conversationType string
+}
+
+func (e ErrUnrecognizedConversationType) Error() string {
+	return fmt.Sprintf("unrecognized conversation type: \"%v\"", e.conversationType)
+}
+
+func createConversation(conversationType string, name string) (greetings.IConversation, error) {
 	var conversation greetings.IConversation
 	var err error
 
@@ -23,16 +50,11 @@ func main() {
 	} else if conversationType == "pirate" {
 		conversation = PirateConversation{name}
 	} else {
-		log.Fatalf("Unrecognized conversation type: %v", conversationType)
+		conversation = nil
+		err = ErrUnrecognizedConversationType{conversationType}
 	}
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	log.Println(conversation.SayHello())
-	log.Println(conversation.SayGoodbye())
-
+	return conversation, err
 }
 
 type PirateConversation struct {

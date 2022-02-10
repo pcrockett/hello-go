@@ -2,10 +2,7 @@
 set -Eeuo pipefail
 
 @goal default
-    cd hello
-    go run .
-
-@goal build
+    echo "Building..."
     mkdir --parent out
     cd hello
     go vet
