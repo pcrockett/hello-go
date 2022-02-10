@@ -10,43 +10,43 @@ type Conversation interface {
 	SayGoodbye() string
 }
 
-type PoliteConversation struct {
+type politeConversation struct {
 	name string
 }
 
-func NewPoliteConversation(name string) (*PoliteConversation, error) {
+func NewPoliteConversation(name string) (*politeConversation, error) {
 	err := validateName(name)
 	if err != nil {
 		return nil, err
 	}
-	return &PoliteConversation{name}, nil
+	return &politeConversation{name}, nil
 }
 
-func (c PoliteConversation) SayHello() string {
+func (c politeConversation) SayHello() string {
 	return fmt.Sprintf("Good morrow, fair %v!", c.name)
 }
 
-func (c PoliteConversation) SayGoodbye() string {
+func (c politeConversation) SayGoodbye() string {
 	return fmt.Sprintf("Cheerio, taa-taa %v, my good lad!", c.name)
 }
 
-type RudeConversation struct {
+type rudeConversation struct {
 	name string
 }
 
-func NewRudeConversation(name string) (*RudeConversation, error) {
+func NewRudeConversation(name string) (*rudeConversation, error) {
 	err := validateName(name)
 	if err != nil {
 		return nil, err
 	}
-	return &RudeConversation{name}, nil
+	return &rudeConversation{name}, nil
 }
 
-func (c RudeConversation) SayHello() string {
+func (c rudeConversation) SayHello() string {
 	return fmt.Sprintf("What do you want %v?", c.name)
 }
 
-func (c RudeConversation) SayGoodbye() string {
+func (c rudeConversation) SayGoodbye() string {
 	return fmt.Sprintf("Go away %v!", c.name)
 }
 
