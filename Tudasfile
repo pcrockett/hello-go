@@ -8,4 +8,5 @@ set -Eeuo pipefail
 @goal build
     mkdir --parent out
     cd hello
+    go vet
     go build -o ../out
