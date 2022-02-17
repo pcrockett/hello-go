@@ -14,9 +14,10 @@ Install Go. Then run `./tudas`.
 * [x] Use interfaces for polymorphism
 * [x] Define custom greeting
 * [x] Parse command line parameters
-* [ ] Testing
+* [x] Testing
 * [ ] Play with some crypto!
 * [ ] Play with Gin
+* [ ] Concurrency
 
 ## Misc Notes
 
